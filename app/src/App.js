@@ -10,6 +10,11 @@ export async function approve(escrowContract, signer) {
   await approveTxn.wait();
 }
 
+export async function reject(escrowContract, signer) {
+  const approveTxn = await escrowContract.connect(signer).reject();
+  await approveTxn.wait();
+}
+
 function App() {
   const [escrows, setEscrows] = useState([]);
   const [account, setAccount] = useState();
@@ -29,7 +34,7 @@ function App() {
   async function newContract() {
     const beneficiary = document.getElementById('beneficiary').value;
     const arbiter = document.getElementById('arbiter').value;
-    const value = ethers.BigNumber.from(document.getElementById('wei').value);
+    const value = ethers.utils.parseEther(document.getElementById('eth').value);
     const escrowContract = await deploy(signer, arbiter, beneficiary, value);
 
 
@@ -37,16 +42,34 @@ function App() {
       address: escrowContract.address,
       arbiter,
       beneficiary,
-      value: value.toString(),
+      value: (value / 10 ** 18).toString() + ' ETH',
       handleApprove: async () => {
         escrowContract.on('Approved', () => {
-          document.getElementById(escrowContract.address).className =
+          document.getElementById(escrowContract.address + "Approve").className =
             'complete';
-          document.getElementById(escrowContract.address).innerText =
+          document.getElementById(escrowContract.address + "Reject").className =
+            'complete';
+          document.getElementById(escrowContract.address + "Approve").innerText =
             "✓ It's been approved!";
+          document.getElementById(escrowContract.address + "Reject").innerText =
+            "";
         });
 
         await approve(escrowContract, signer);
+      },
+      handleReject: async () => {
+        escrowContract.on('Rejected', () => {
+          document.getElementById(escrowContract.address + "Approve").className =
+            'complete';
+          document.getElementById(escrowContract.address + "Reject").className =
+            'complete';
+          document.getElementById(escrowContract.address + "Approve").innerText =
+            "";
+          document.getElementById(escrowContract.address + "Reject").innerText =
+            "x It's been rejected!";
+        });
+
+        await reject(escrowContract, signer);
       },
     };
 
@@ -68,8 +91,8 @@ function App() {
         </label>
 
         <label>
-          Deposit Amount (in Wei)
-          <input type="text" id="wei" />
+          Deposit Amount (in ETH)
+          <input type="text" id="eth" />
         </label>
 
         <div
